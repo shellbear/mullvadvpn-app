@@ -18,6 +18,7 @@ import {
   KeygenEvent,
   RelaySettingsUpdate,
   TunnelState,
+  VoucherResponse,
 } from './daemon-rpc-types';
 
 export interface IAppStateSnapshot {
@@ -109,6 +110,7 @@ interface IAccountHandlers extends ISender<IAccountData | undefined> {
   handleLogout(fn: () => Promise<void>): void;
   handleWwwAuthToken(fn: () => Promise<string>): void;
   handleUpdateAccountData(fn: () => void): void;
+  handleSubmitVoucher(fn: (voucherCode: string) => Promise<VoucherResponse>): void;
 }
 
 interface IAccountMethods extends IReceiver<IAccountData | undefined> {
@@ -117,6 +119,7 @@ interface IAccountMethods extends IReceiver<IAccountData | undefined> {
   logout(): Promise<void>;
   getWwwAuthToken(): Promise<string>;
   updateAccountData(): void;
+  submitVoucher(voucherCode: string): Promise<VoucherResponse>;
 }
 
 interface IAccountHistoryHandlers extends ISender<AccountToken[]> {
@@ -193,6 +196,7 @@ const DO_LOGOUT = 'do-logout';
 const DO_GET_WWW_AUTH_TOKEN = 'do-get-www-auth-token';
 const ACCOUNT_DATA_CHANGED = 'account-data-changed';
 const UPDATE_ACCOUNT_DATA = 'update-account-data';
+const REDEEM_VOUCHER = 'redeem-voucher';
 
 const AUTO_START_CHANGED = 'auto-start-changed';
 const SET_AUTO_START = 'set-auto-start';
@@ -287,6 +291,7 @@ export class IpcRendererEventChannel {
     logout: requestSender(DO_LOGOUT),
     getWwwAuthToken: requestSender(DO_GET_WWW_AUTH_TOKEN),
     updateAccountData: requestSender(UPDATE_ACCOUNT_DATA),
+    submitVoucher: requestSender(REDEEM_VOUCHER),
   };
 
   public static accountHistory: IAccountHistoryMethods = {
@@ -383,6 +388,7 @@ export class IpcMainEventChannel {
     handleLogout: requestHandler(DO_LOGOUT),
     handleWwwAuthToken: requestHandler(DO_GET_WWW_AUTH_TOKEN),
     handleUpdateAccountData: handler(UPDATE_ACCOUNT_DATA),
+    handleSubmitVoucher: requestHandler<VoucherResponse>(REDEEM_VOUCHER),
   };
 
   public static accountHistory: IAccountHistoryHandlers = {
