@@ -6,9 +6,11 @@ use std::{
 };
 
 const NETCLS_PATH: &str = "/sys/fs/cgroup/net_cls/";
+/// Identifies packets coming from the cgroup.
 pub const NETCLS_CLASSID: u32 = 0x4d9f41;
 const CGROUP_NAME: &str = "mullvad-exclusions";
 
+/// Errors related to split tunneling.
 #[derive(err_derive::Error, Debug)]
 #[error(no_from)]
 pub enum Error {
@@ -32,7 +34,5 @@ fn create_cgroup() -> Result<(), Error> {
     let mut classid_file = PathBuf::from(exclusions_dir);
     classid_file.push("net_cls.classid");
     fs::write(classid_file, NETCLS_CLASSID.to_string().as_bytes())
-        .map_err(Error::SetCGroupClassId)?;
-
-    Ok(())
+        .map_err(Error::SetCGroupClassId)
 }
