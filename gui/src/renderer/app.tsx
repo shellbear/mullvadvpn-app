@@ -268,6 +268,10 @@ export default class AppRenderer {
     this.reduxActions.userInterface.setShowWelcomeView(true);
   }
 
+  public updateAccountData() {
+    IpcRendererEventChannel.account.updateAccountData();
+  }
+
   public async connectTunnel(): Promise<void> {
     const state = this.tunnelState.state;
 
