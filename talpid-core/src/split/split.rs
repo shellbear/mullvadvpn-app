@@ -2,7 +2,8 @@ use talpid_types::ErrorExt;
 use regex::Regex;
 use std::{
     fs,
-    io::{self, Write},
+    io::{self, BufRead, BufReader, Write},
+    net::IpAddr,
     path::PathBuf,
     process::Command,
 };
@@ -33,6 +34,14 @@ pub enum Error {
     /// Unable to set class ID for cgroup.
     #[error(display = "Unable to set cgroup class ID")]
     SetCGroupClassId(#[error(source)] io::Error),
+
+    /// Unable to add setup DNS routing.
+    #[error(display = "Failed to add routing table DNS rules")]
+    SetDns(#[error(source)] io::Error),
+
+    /// Unable to flush routing table.
+    #[error(display = "Failed to clear routing table DNS rules")]
+    FlushDns(#[error(source)] io::Error),
 }
 
 /// Route PID-associated packets through the physical interface.
@@ -65,6 +74,64 @@ pub fn route_marked_packets() -> Result<(), Error> {
 
     log::trace!("running cmd - {:?}", &cmd);
     cmd.output().map(|_| ()).map_err(Error::RoutingTableSetup)
+}
+
+/// Route DNS requests through the tunnel interface.
+pub fn route_dns(tunnel_alias: &str, dns_servers: &[IpAddr]) -> Result<(), Error> {
+    // TODO: IPv6
+
+    let mut cmd = Command::new("ip");
+    cmd.args(&[
+        "-4",
+        "route",
+        "flush",
+        "table",
+        ROUTING_TABLE_NAME,
+    ]);
+
+    log::trace!("running cmd - {:?}", &cmd);
+    cmd.output().map(|_| ()).map_err(Error::SetDns)?;
+
+    for server in dns_servers {
+        if let IpAddr::V4(addr) = server {
+            let addr = addr.to_string();
+
+            let mut cmd = Command::new("ip");
+            cmd.args(&[
+                "-4",
+                "route",
+                "add",
+                &addr,
+                "via",
+                &addr,
+                "dev",
+                tunnel_alias,
+                "table",
+                ROUTING_TABLE_NAME,
+            ]);
+
+            log::trace!("running cmd - {:?}", &cmd);
+            cmd.output().map(|_| ()).map_err(Error::SetDns)?;
+        }
+    }
+
+    Ok(())
+}
+
+/// Reset DNS rules.
+pub fn flush_dns() -> Result<(), Error> {
+    // For now, simply flush it
+    let mut cmd = Command::new("ip");
+    cmd.args(&[
+        "-4",
+        "route",
+        "flush",
+        "table",
+        ROUTING_TABLE_NAME,
+    ]);
+
+    log::trace!("running cmd - {:?}", &cmd);
+    cmd.output().map(|_| ()).map_err(Error::FlushDns)
 }
 
 /// Set up policy-based routing for marked packets.
