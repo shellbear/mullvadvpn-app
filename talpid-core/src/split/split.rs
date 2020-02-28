@@ -23,7 +23,8 @@ pub enum Error {
     SetCGroupClassId(#[error(source)] io::Error),
 }
 
-fn create_cgroup() -> Result<(), Error> {
+/// Set up cgroup used to track PIDs for split tunneling.
+pub fn create_cgroup() -> Result<(), Error> {
     let mut exclusions_dir = PathBuf::from(NETCLS_PATH);
     exclusions_dir.push(CGROUP_NAME);
 
