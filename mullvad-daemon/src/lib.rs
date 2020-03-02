@@ -56,6 +56,7 @@ use std::{
 };
 use talpid_core::{
     mpsc::Sender,
+    split,
     tunnel_state_machine::{self, TunnelCommand, TunnelParametersGenerator},
 };
 #[cfg(target_os = "android")]
@@ -95,6 +96,9 @@ pub enum Error {
 
     #[error(display = "Unable to load account history with wireguard key cache")]
     LoadAccountHistory(#[error(source)] account_history::Error),
+
+    #[error(display = "Unable to initialize split tunneling")]
+    InitSplitTunneling(#[error(source)] split::Error),
 
     #[error(display = "No wireguard private key available")]
     NoKeyAvailable,
@@ -432,6 +436,7 @@ pub struct Daemon<L: EventListener> {
     tunnel_state: TunnelState,
     target_state: TargetState,
     state: DaemonExecutionState,
+    exclude_pids: split::PidManager,
     rx: Wait<UnboundedReceiver<InternalDaemonEvent>>,
     tx: DaemonEventSender,
     reconnection_loop_tx: Option<mpsc::Sender<()>>,
@@ -583,6 +588,7 @@ where
             tunnel_state: TunnelState::Disconnected,
             target_state: initial_target_state,
             state: DaemonExecutionState::Running,
+            exclude_pids: split::PidManager::new().map_err(Error::InitSplitTunneling)?,
             rx: internal_event_rx.wait(),
             tx: internal_event_tx,
             reconnection_loop_tx: None,
