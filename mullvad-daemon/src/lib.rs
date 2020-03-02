@@ -436,6 +436,7 @@ pub struct Daemon<L: EventListener> {
     tunnel_state: TunnelState,
     target_state: TargetState,
     state: DaemonExecutionState,
+    #[cfg(target_os = "linux")]
     exclude_pids: split::PidManager,
     rx: Wait<UnboundedReceiver<InternalDaemonEvent>>,
     tx: DaemonEventSender,
@@ -588,6 +589,7 @@ where
             tunnel_state: TunnelState::Disconnected,
             target_state: initial_target_state,
             state: DaemonExecutionState::Running,
+            #[cfg(target_os = "linux")]
             exclude_pids: split::PidManager::new().map_err(Error::InitSplitTunneling)?,
             rx: internal_event_rx.wait(),
             tx: internal_event_tx,
