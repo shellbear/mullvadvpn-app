@@ -7,8 +7,10 @@ import { AccountToken } from '../../shared/daemon-rpc-types';
 import { messages } from '../../shared/gettext';
 import { AccountTokenLabel } from './Account';
 import * as AppButton from './AppButton';
+import * as Cell from './Cell';
 import styles from './ExpiredAccountErrorViewStyles';
 import ImageView from './ImageView';
+import { ModalAlert, ModalAlertType } from './Modal';
 
 export enum RecoveryAction {
   openBrowser,
@@ -26,9 +28,21 @@ interface IExpiredAccountErrorViewProps {
   onExternalLinkWithAuth: (url: string) => Promise<void>;
   showWelcomeView: boolean;
   onDisconnect: () => Promise<void>;
+  setBlockWhenDisconnected: (value: boolean) => void;
 }
 
-export default class ExpiredAccountErrorView extends Component<IExpiredAccountErrorViewProps> {
+interface IExpiredAccountErrorViewState {
+  showBlockWhenDisconnectedAlert: boolean;
+}
+
+export default class ExpiredAccountErrorView extends Component<
+  IExpiredAccountErrorViewProps,
+  IExpiredAccountErrorViewState
+> {
+  public state: IExpiredAccountErrorViewState = {
+    showBlockWhenDisconnectedAlert: false,
+  };
+
   private updateAccountDataInterval?: number;
 
   public componentDidMount() {
@@ -61,6 +75,8 @@ export default class ExpiredAccountErrorView extends Component<IExpiredAccountEr
 
           {this.renderExternalPaymentButton()}
         </View>
+
+        {this.state.showBlockWhenDisconnectedAlert && this.renderBlockWhenDisconnectedAlert()}
       </View>
     );
   }
@@ -139,7 +155,7 @@ export default class ExpiredAccountErrorView extends Component<IExpiredAccountEr
 
     return (
       <AppButton.BlockingButton
-        disabled={this.props.isBlocked}
+        disabled={this.getRecoveryAction() === RecoveryAction.disconnect}
         onPress={this.onOpenExternalPayment}>
         <AppButton.GreenButton>
           <AppButton.Label>{buttonText}</AppButton.Label>
@@ -149,8 +165,46 @@ export default class ExpiredAccountErrorView extends Component<IExpiredAccountEr
     );
   }
 
+  private renderBlockWhenDisconnectedAlert() {
+    return (
+      <ModalAlert
+        type={ModalAlertType.Info}
+        buttons={[
+          <AppButton.BlueButton
+            key="cancel"
+            onPress={this.onCloseBlockWhenDisconnectedInstructions}>
+            {messages.pgettext('connect-view', 'Close')}
+          </AppButton.BlueButton>,
+        ]}>
+        <Text style={styles.fieldLabel}>
+          {messages.pgettext(
+            'connect-view',
+            'You need to disable “Block when disconnected” in order to access the Internet to add time.',
+          )}
+        </Text>
+        <Text style={styles.fieldLabel}>
+          {messages.pgettext(
+            'connect-view',
+            'Remember, turning it off will allow network traffic while the VPN is disconnected until you turn it back on under Advanced settings.',
+          )}
+        </Text>
+        <Cell.Container>
+          <Cell.Label>{messages.pgettext('connect-view', 'Block when disconnected')}</Cell.Label>
+          <Cell.Switch
+            isOn={this.props.blockWhenDisconnected}
+            onChange={this.props.setBlockWhenDisconnected}
+          />
+        </Cell.Container>
+      </ModalAlert>
+    );
+  }
+
   private onOpenExternalPayment = async (): Promise<void> => {
-    await this.props.onExternalLinkWithAuth(links.purchase);
+    if (this.getRecoveryAction() === RecoveryAction.disableBlockedWhenDisconnected) {
+      this.setState({ showBlockWhenDisconnectedAlert: true });
+    } else {
+      await this.props.onExternalLinkWithAuth(links.purchase);
+    }
   };
 
   private getRecoveryAction() {
@@ -164,4 +218,8 @@ export default class ExpiredAccountErrorView extends Component<IExpiredAccountEr
       return RecoveryAction.openBrowser;
     }
   }
+
+  private onCloseBlockWhenDisconnectedInstructions = () => {
+    this.setState({ showBlockWhenDisconnectedAlert: false });
+  };
 }
