@@ -8,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-const NETCLS_PATH: &str = "/sys/fs/cgroup/net_cls/";
+const NETCLS_DIR: &str = "/sys/fs/cgroup/net_cls/";
 
 /// Identifies packets coming from the cgroup.
 pub const NETCLS_CLASSID: u32 = 0x4d9f41;
@@ -328,7 +328,7 @@ impl PidManager {
 
     /// Set up cgroup used to track PIDs for split tunneling.
     fn create_cgroup() -> Result<(), Error> {
-        let mut exclusions_dir = PathBuf::from(NETCLS_PATH);
+        let mut exclusions_dir = PathBuf::from(NETCLS_DIR);
         exclusions_dir.push(CGROUP_NAME);
 
         if !exclusions_dir.exists() {
